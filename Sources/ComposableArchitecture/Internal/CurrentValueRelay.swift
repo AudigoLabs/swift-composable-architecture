@@ -25,11 +25,10 @@ final class CurrentValueRelay<Output>: Publisher {
   }
 
   func receive(subscriber: some Subscriber<Output, Never>) {
-    let subscription = Subscription(upstream: self, downstream: subscriber)
+    let subscription = Subscription(downstream: AnySubscriber(subscriber))
     self.lock.sync {
       self.subscriptions.append(subscription)
     }
-    subscriber.receive(subscription: subscription)
   }
 
   func send(_ value: Output) {
@@ -49,6 +48,7 @@ final class CurrentValueRelay<Output>: Publisher {
 }
 
 extension CurrentValueRelay {
+
   fileprivate final class Subscription: Combine.Subscription, Equatable {
     private var demand = Subscribers.Demand.none
     private var downstream: (any Subscriber<Output, Never>)?

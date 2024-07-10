@@ -6,7 +6,7 @@ import OrderedCollections
 /// A list of data representing the content of a navigation stack.
 ///
 /// Use this type for modeling a feature's domain that needs to present child features using
-/// ``Reducer/forEach(_:action:destination:fileID:line:)-yz3v``.
+/// ``Reducer/forEach(_:action:destination:fileID:line:)-582rd``.
 ///
 /// See the dedicated article on <doc:Navigation> for more information on the library's navigation
 /// tools, and in particular see <doc:StackBasedNavigation> for information on modeling navigation
@@ -85,25 +85,25 @@ public struct StackState<Element> {
     iOS,
     deprecated: 9999,
     message:
-      "Use the version of this subscript with case key paths, instead. See the following migration guide for more information:\n\nhttps://pointfreeco.github.io/swift-composable-architecture/main/documentation/composablearchitecture/migratingto1.4#Using-case-key-paths"
+      "Use the version of this subscript with case key paths, instead. See the following migration guide for more information: https://pointfreeco.github.io/swift-composable-architecture/main/documentation/composablearchitecture/migratingto1.4#Using-case-key-paths"
   )
   @available(
     macOS,
     deprecated: 9999,
     message:
-      "Use the version of this subscript with case key paths, instead. See the following migration guide for more information:\n\nhttps://pointfreeco.github.io/swift-composable-architecture/main/documentation/composablearchitecture/migratingto1.4#Using-case-key-paths"
+      "Use the version of this subscript with case key paths, instead. See the following migration guide for more information: https://pointfreeco.github.io/swift-composable-architecture/main/documentation/composablearchitecture/migratingto1.4#Using-case-key-paths"
   )
   @available(
     tvOS,
     deprecated: 9999,
     message:
-      "Use the version of this subscript with case key paths, instead. See the following migration guide for more information:\n\nhttps://pointfreeco.github.io/swift-composable-architecture/main/documentation/composablearchitecture/migratingto1.4#Using-case-key-paths"
+      "Use the version of this subscript with case key paths, instead. See the following migration guide for more information: https://pointfreeco.github.io/swift-composable-architecture/main/documentation/composablearchitecture/migratingto1.4#Using-case-key-paths"
   )
   @available(
     watchOS,
     deprecated: 9999,
     message:
-      "Use the version of this subscript with case key paths, instead. See the following migration guide for more information:\n\nhttps://pointfreeco.github.io/swift-composable-architecture/main/documentation/composablearchitecture/migratingto1.4#Using-case-key-paths"
+      "Use the version of this subscript with case key paths, instead. See the following migration guide for more information: https://pointfreeco.github.io/swift-composable-architecture/main/documentation/composablearchitecture/migratingto1.4#Using-case-key-paths"
   )
   public subscript<Case>(id id: StackElementID, case path: AnyCasePath<Element, Case>) -> Case? {
     _read { yield self[id: id].flatMap(path.extract) }
@@ -162,8 +162,9 @@ extension StackState: RandomAccessCollection, RangeReplaceableCollection {
   public mutating func removeAll(keepingCapacity keepCapacity: Bool = false) {
     self._dictionary.removeAll(keepingCapacity: keepCapacity)
   }
-  public mutating func replaceSubrange<C: Collection>(_ subrange: Range<Int>, with newElements: C)
-  where C.Element == Element {
+  public mutating func replaceSubrange(
+    _ subrange: Range<Int>, with newElements: some Collection<Element>
+  ) {
     self._dictionary.removeSubrange(subrange)
     for (offset, element) in zip(subrange.lowerBound..., newElements) {
       self._dictionary.updateValue(element, forKey: self.stackElementID.next(), insertingAt: offset)
@@ -183,8 +184,7 @@ extension StackState: Hashable where Element: Hashable {
   }
 }
 
-// NB: We can remove `@unchecked` when swift-collections 1.1 is released.
-extension StackState: @unchecked Sendable where Element: Sendable {}
+extension StackState: Sendable where Element: Sendable {}
 
 extension StackState: Decodable where Element: Decodable {
   public init(from decoder: Decoder) throws {
@@ -220,7 +220,7 @@ extension StackState: CustomDumpReflectable {
 /// A wrapper type for actions that can be presented in a navigation stack.
 ///
 /// Use this type for modeling a feature's domain that needs to present child features using
-/// ``Reducer/forEach(_:action:destination:fileID:line:)-yz3v``.
+/// ``Reducer/forEach(_:action:destination:fileID:line:)-582rd``.
 ///
 /// See the dedicated article on <doc:Navigation> for more information on the library's navigation
 /// tools, and in particular see <doc:StackBasedNavigation> for information on modeling navigation
@@ -243,7 +243,7 @@ public enum StackAction<State, Action>: CasePathable {
   public struct AllCasePaths {
     public var element: AnyCasePath<StackAction, (id: StackElementID, action: Action)> {
       AnyCasePath(
-        embed: StackAction.element,
+        embed: { .element(id: $0, action: $1) },
         extract: {
           guard case let .element(id, action) = $0 else { return nil }
           return (id: id, action: action)
@@ -253,7 +253,7 @@ public enum StackAction<State, Action>: CasePathable {
 
     public var popFrom: AnyCasePath<StackAction, StackElementID> {
       AnyCasePath(
-        embed: StackAction.popFrom,
+        embed: { .popFrom(id: $0) },
         extract: {
           guard case let .popFrom(id) = $0 else { return nil }
           return id
@@ -263,7 +263,7 @@ public enum StackAction<State, Action>: CasePathable {
 
     public var push: AnyCasePath<StackAction, (id: StackElementID, state: State)> {
       AnyCasePath(
-        embed: StackAction.push,
+        embed: { .push(id: $0, state: $1) },
         extract: {
           guard case let .push(id, state) = $0 else { return nil }
           return (id: id, state: state)
@@ -306,7 +306,7 @@ extension Reducer {
   ///     // ...
   ///   }
   ///   enum Action {
-  ///     case path(StackAction<Path.State, Path.Action>)
+  ///     case path(StackActionOf<Path>)
   ///     // ...
   ///   }
   ///   var body: some ReducerOf<Self> {
@@ -349,14 +349,15 @@ extension Reducer {
   /// - Returns: A reducer that combines the destination reducer with the parent reducer.
   @inlinable
   @warn_unqualified_access
-  public func forEach<DestinationState, DestinationAction, Destination: Reducer>(
+  public func forEach<
+    DestinationState, DestinationAction, Destination: Reducer<DestinationState, DestinationAction>
+  >(
     _ toStackState: WritableKeyPath<State, StackState<DestinationState>>,
     action toStackAction: CaseKeyPath<Action, StackAction<DestinationState, DestinationAction>>,
     @ReducerBuilder<DestinationState, DestinationAction> destination: () -> Destination,
     fileID: StaticString = #fileID,
     line: UInt = #line
-  ) -> _StackReducer<Self, Destination>
-  where Destination.State == DestinationState, Destination.Action == DestinationAction {
+  ) -> some Reducer<State, Action> {
     _StackReducer(
       base: self,
       toStackState: toStackState,
@@ -371,36 +372,37 @@ extension Reducer {
     iOS,
     deprecated: 9999,
     message:
-      "Use the version of this operator with case key paths, instead. See the following migration guide for more information:\n\nhttps://pointfreeco.github.io/swift-composable-architecture/main/documentation/composablearchitecture/migratingto1.4#Using-case-key-paths"
+      "Use the version of this operator with case key paths, instead. See the following migration guide for more information: https://pointfreeco.github.io/swift-composable-architecture/main/documentation/composablearchitecture/migratingto1.4#Using-case-key-paths"
   )
   @available(
     macOS,
     deprecated: 9999,
     message:
-      "Use the version of this operator with case key paths, instead. See the following migration guide for more information:\n\nhttps://pointfreeco.github.io/swift-composable-architecture/main/documentation/composablearchitecture/migratingto1.4#Using-case-key-paths"
+      "Use the version of this operator with case key paths, instead. See the following migration guide for more information: https://pointfreeco.github.io/swift-composable-architecture/main/documentation/composablearchitecture/migratingto1.4#Using-case-key-paths"
   )
   @available(
     tvOS,
     deprecated: 9999,
     message:
-      "Use the version of this operator with case key paths, instead. See the following migration guide for more information:\n\nhttps://pointfreeco.github.io/swift-composable-architecture/main/documentation/composablearchitecture/migratingto1.4#Using-case-key-paths"
+      "Use the version of this operator with case key paths, instead. See the following migration guide for more information: https://pointfreeco.github.io/swift-composable-architecture/main/documentation/composablearchitecture/migratingto1.4#Using-case-key-paths"
   )
   @available(
     watchOS,
     deprecated: 9999,
     message:
-      "Use the version of this operator with case key paths, instead. See the following migration guide for more information:\n\nhttps://pointfreeco.github.io/swift-composable-architecture/main/documentation/composablearchitecture/migratingto1.4#Using-case-key-paths"
+      "Use the version of this operator with case key paths, instead. See the following migration guide for more information: https://pointfreeco.github.io/swift-composable-architecture/main/documentation/composablearchitecture/migratingto1.4#Using-case-key-paths"
   )
   @inlinable
   @warn_unqualified_access
-  public func forEach<DestinationState, DestinationAction, Destination: Reducer>(
+  public func forEach<
+    DestinationState, DestinationAction, Destination: Reducer<DestinationState, DestinationAction>
+  >(
     _ toStackState: WritableKeyPath<State, StackState<DestinationState>>,
     action toStackAction: AnyCasePath<Action, StackAction<DestinationState, DestinationAction>>,
     @ReducerBuilder<DestinationState, DestinationAction> destination: () -> Destination,
     fileID: StaticString = #fileID,
     line: UInt = #line
-  ) -> _StackReducer<Self, Destination>
-  where Destination.State == DestinationState, Destination.Action == DestinationAction {
+  ) -> some Reducer<State, Action> {
     _StackReducer(
       base: self,
       toStackState: toStackState,
@@ -411,6 +413,21 @@ extension Reducer {
     )
   }
 }
+
+/// A convenience type alias for referring to a stack action of a given reducer's domain.
+///
+/// Instead of specifying two generics:
+///
+/// ```swift
+///     case path(StackAction<Path.State, Path.Action>)
+/// ```
+///
+/// You can specify a single generic:
+///
+/// ```swift
+///     case path(StackActionOf<Path>)
+/// ```
+public typealias StackActionOf<R: Reducer> = StackAction<R.State, R.Action>
 
 public struct _StackReducer<Base: Reducer, Destination: Reducer>: Reducer {
   let base: Base
@@ -486,7 +503,7 @@ public struct _StackReducer<Base: Reducer, Destination: Reducer>: Reducer {
           • This action was sent to the store while its state contained no element at this ID. To \
           fix this make sure that actions for this reducer can only be sent from a view store when \
           its state contains an element at this id. In SwiftUI applications, use \
-          "NavigationStackStore".
+          "NavigationStack.init(path:)" with a binding to a store.
           """
         )
         destinationEffects = .none

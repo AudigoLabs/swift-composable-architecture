@@ -2,10 +2,10 @@ import Combine
 import ComposableArchitecture
 import XCTest
 
-@MainActor
 final class EffectThrottleTests: BaseTCATestCase {
   let mainQueue = DispatchQueue.test
 
+  @MainActor
   func testThrottleLatest_Publisher() async {
     let store = TestStore(initialState: ThrottleFeature.State()) {
       ThrottleFeature(id: #function, latest: true)
@@ -45,6 +45,7 @@ final class EffectThrottleTests: BaseTCATestCase {
     }
   }
 
+  @MainActor
   func testThrottleLatest_Async() async {
     let store = TestStore(initialState: ThrottleFeature.State()) {
       ThrottleFeature(id: #function, latest: true)
@@ -84,6 +85,7 @@ final class EffectThrottleTests: BaseTCATestCase {
     }
   }
 
+  @MainActor
   func testThrottleFirst_Publisher() async {
     let store = TestStore(initialState: ThrottleFeature.State()) {
       ThrottleFeature(id: #function, latest: false)
@@ -123,6 +125,7 @@ final class EffectThrottleTests: BaseTCATestCase {
     }
   }
 
+  @MainActor
   func testThrottleAfterInterval_Publisher() async {
     let store = TestStore(initialState: ThrottleFeature.State()) {
       ThrottleFeature(id: #function, latest: true)
@@ -144,6 +147,7 @@ final class EffectThrottleTests: BaseTCATestCase {
     }
   }
 
+  @MainActor
   func testThrottleEmitsFirstValueOnce_Publisher() async {
     let store = TestStore(initialState: ThrottleFeature.State()) {
       ThrottleFeature(id: #function, latest: true)

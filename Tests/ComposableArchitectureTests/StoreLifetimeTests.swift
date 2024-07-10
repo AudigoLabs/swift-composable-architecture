@@ -2,8 +2,9 @@ import Combine
 @_spi(Logging) import ComposableArchitecture
 import XCTest
 
-@MainActor
 final class StoreLifetimeTests: BaseTCATestCase {
+  @available(*, deprecated)
+  @MainActor
   func testStoreCaching() {
     let grandparentStore = Store(initialState: Grandparent.State()) {
       Grandparent()
@@ -20,6 +21,8 @@ final class StoreLifetimeTests: BaseTCATestCase {
     )
   }
 
+  @available(*, deprecated)
+  @MainActor
   func testStoreInvalidation() {
     let grandparentStore = Store(initialState: Grandparent.State()) {
       Grandparent()
@@ -47,6 +50,7 @@ final class StoreLifetimeTests: BaseTCATestCase {
   }
 
   #if DEBUG
+    @MainActor
     func testStoreDeinit() {
       Logger.shared.isEnabled = true
       do {
@@ -63,6 +67,7 @@ final class StoreLifetimeTests: BaseTCATestCase {
       )
     }
 
+    @MainActor
     func testStoreDeinit_RunningEffect() async {
       XCTTODO(
         "We would like for this to pass, but it requires full deprecation of uncached child stores"
@@ -92,6 +97,7 @@ final class StoreLifetimeTests: BaseTCATestCase {
       await self.fulfillment(of: [effectFinished], timeout: 0.5)
     }
 
+    @MainActor
     func testStoreDeinit_RunningCombineEffect() async {
       XCTTODO(
         "We would like for this to pass, but it requires full deprecation of uncached child stores"
